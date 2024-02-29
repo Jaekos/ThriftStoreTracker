@@ -21,29 +21,27 @@ import com.google.android.libraries.places.api.model.Place
 import com.google.android.libraries.places.api.model.RectangularBounds
 import com.google.android.libraries.places.api.net.PlacesClient
 import com.google.android.libraries.places.api.net.SearchByTextRequest
-import kotlin.math.absoluteValue
-import com.google.android.gms.maps.GoogleMap.OnCameraIdleListener
 import com.google.android.gms.maps.model.MarkerOptions
 
 // The geographical location where the device is currently located. That is, the last-known
 // location retrieved by the Fused Location Provider.
 private var lastKnownLocation: Location? = null
-private var placesClient: PlacesClient? = null;
+private var placesClient: PlacesClient? = null
 
 class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
     private lateinit var fusedLocationProviderClient: FusedLocationProviderClient
     private var map: GoogleMap? = null
     private var locationPermissionGranted = false
-    val defaultLocation = LatLng(-34.0, 151.0)
+    private val defaultLocation = LatLng(-34.0, 151.0)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
         // construct places client
-        Places.initialize(applicationContext, BuildConfig.MAP_API_KEY);
-        placesClient = Places.createClient(this);
+        Places.initialize(applicationContext, BuildConfig.MAP_API_KEY)
+        placesClient = Places.createClient(this)
 
 
         fusedLocationProviderClient = LocationServices.getFusedLocationProviderClient(this)
@@ -65,12 +63,12 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
         // search for thrift places around the user when the map comes to an idle
         map.setOnCameraIdleListener {
-            searchPlaces("thrift")
+            searchThriftPlaces()
         }
     }
 
     @SuppressLint("MissingPermission")
-    private fun searchPlaces(query: String) {
+    private fun searchThriftPlaces() {
         Log.e(TAG,"this thing on?")
         val fields = mutableListOf(Place.Field.NAME, Place.Field.ADDRESS,
             Place.Field.LAT_LNG)
@@ -78,7 +76,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         val southwest = map!!.projection.visibleRegion.latLngBounds.southwest
         val northeast = map!!.projection.visibleRegion.latLngBounds.northeast
         // send a text request to fetch the clothing stores in this region
-        val request = SearchByTextRequest.builder(query, fields)
+        val request = SearchByTextRequest.builder("thrift", fields)
             .setIncludedType("clothing_store")
             .setLocationRestriction(RectangularBounds.newInstance(
                 southwest, northeast))
@@ -87,8 +85,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         placesClient?.searchByText(request)?.addOnCompleteListener { task ->
             if (task.isSuccessful) {
                 Log.e(TAG,"got a successful response")
-                var result = task.result
-                for (place in result.places) {
+                for (place in task.result.places) {
                     Log.e(TAG, "Address: " + place.address + " Name: " + place.name)
                     map!!.addMarker(MarkerOptions().position(place.latLng))
                 }
@@ -192,15 +189,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
         private val TAG = MainActivity::class.java.simpleName
         private const val DEFAULT_ZOOM = 15
         private const val PERMISSIONS_REQUEST_ACCESS_FINE_LOCATION = 1
-
-        // Keys for storing activity state.
-        // [START maps_current_place_state_keys]
-        private const val KEY_CAMERA_POSITION = "camera_position"
-        private const val KEY_LOCATION = "location"
-        // [END maps_current_place_state_keys]
-
-        // Used for selecting the current place.
-        private const val M_MAX_ENTRIES = 5
     }
 }
 
