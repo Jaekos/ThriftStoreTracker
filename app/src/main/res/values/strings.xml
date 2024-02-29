@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Dating Planner</string>
+    <string name="textViewName">Location Name</string>
+    <string name="textViewAddress">Address</string>
 </resources>

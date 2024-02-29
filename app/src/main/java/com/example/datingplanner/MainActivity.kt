@@ -2,6 +2,7 @@ package com.example.datingplanner
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
@@ -87,7 +88,15 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
                 Log.e(TAG,"got a successful response")
                 for (place in task.result.places) {
                     Log.e(TAG, "Address: " + place.address + " Name: " + place.name)
-                    map!!.addMarker(MarkerOptions().position(place.latLng))
+                    map!!.addMarker(MarkerOptions().position(place.latLng).title(place.name).snippet(place.address))
+                }
+                map!!.setOnMarkerClickListener { marker ->
+                    // Launch new activity with location details
+                    val intent = Intent(this, LocationDetailsActivity::class.java)
+                    intent.putExtra("name", marker.title)
+                    intent.putExtra("address", marker.snippet)
+                    startActivity(intent)
+                    true
                 }
             } else {
                 val exception = task.exception

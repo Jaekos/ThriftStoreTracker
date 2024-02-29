@@ -26,6 +26,14 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+        <activity
+            android:name=".LocationDetailsActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.example.yourappname.VIEW_LOCATION_DETAILS" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
         <!-- Adding google maps API key to app-->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
