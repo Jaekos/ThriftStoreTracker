@@ -1,9 +1,8 @@
 package com.example.datingplanner
 
-import android.content.pm.PackageManager
-
 import android.Manifest
 import android.annotation.SuppressLint
+import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Bundle
 import android.util.Log
@@ -17,20 +16,14 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MarkerOptions
 import com.google.android.libraries.places.api.Places
 import com.google.android.libraries.places.api.model.Place
-import com.google.android.libraries.places.api.model.PlaceTypes
 import com.google.android.libraries.places.api.model.RectangularBounds
-import com.google.android.libraries.places.api.model.TypeFilter
-import com.google.android.libraries.places.api.net.FetchPlaceRequest
-import com.google.android.libraries.places.api.net.FetchPlaceResponse
-import com.google.android.libraries.places.api.net.FindAutocompletePredictionsRequest
-import com.google.android.libraries.places.api.net.FindAutocompletePredictionsResponse
-import com.google.android.libraries.places.api.net.FindCurrentPlaceRequest
-import com.google.android.libraries.places.api.net.FindCurrentPlaceResponse
 import com.google.android.libraries.places.api.net.PlacesClient
 import com.google.android.libraries.places.api.net.SearchByTextRequest
+import kotlin.math.absoluteValue
+import com.google.android.gms.maps.GoogleMap.OnCameraIdleListener
+import com.google.android.gms.maps.model.MarkerOptions
 
 // The geographical location where the device is currently located. That is, the last-known
 // location retrieved by the Fused Location Provider.
@@ -59,62 +52,6 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
             .findFragmentById(R.id.map) as SupportMapFragment?
         mapFragment?.getMapAsync(this)
 
-        searchPlaces("uc berkeley")
-    }
-
-    @SuppressLint("MissingPermission")
-    private fun searchPlaces(query: String) {
-        Log.e(TAG,"this thing on?")
-        val filters = mutableListOf<String>()
-        filters.addAll(listOf(PlaceTypes.CLOTHING_STORE))
-        val request = FindAutocompletePredictionsRequest.builder()
-            .setQuery(query)
-            .setTypesFilter(filters)
-            .setLocationBias(RectangularBounds.newInstance(
-                LatLng(37.8637, -122.2517),
-                LatLng(37.8675, -122.2671)  // Example: New York City coordinates
-
-            ))
-            .build()
-        placesClient?.findAutocompletePredictions(request)?.addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                Log.e(TAG,"got a successful response")
-                var result = task.result
-                for (prediction in result.autocompletePredictions) {
-                    Log.e(TAG, "Place: ${prediction.placeId}, Name: ${prediction.getPrimaryText(null)}")
-                    // Process each search result here
-                }
-            } else {
-                val exception = task.exception
-                Log.e("NearbyClothingStores", "Failed to fetch nearby clothing stores: $exception")
-            }
-        }
-    }
-
-    private fun processFindPlaceResponse(response: FindCurrentPlaceResponse, query: String) {
-        for (placeLikelihood in response.placeLikelihoods) {
-            val place = placeLikelihood.place
-            Log.i("FindPlace", "Found place: ${place.name}, LatLng: ${place.latLng}")
-
-            // Check if the found place matches the query
-            if (place.name == query) {
-                fetchPlaceDetails(place.id)
-                return
-            }
-        }
-        Log.e("FindPlace", "No matching place found for query: $query   ")
-    }
-
-    private fun fetchPlaceDetails(placeId: String) {
-        val request = FetchPlaceRequest.newInstance(placeId, listOf(Place.Field.NAME, Place.Field.LAT_LNG))
-
-        placesClient?.fetchPlace(request)?.addOnSuccessListener { response: FetchPlaceResponse ->
-            val place = response.place
-            Log.i("FetchPlaceDetails", "Place details - Name: ${place.name}, LatLng: ${place.latLng}")
-            // Handle the place details here
-        }?.addOnFailureListener { exception: Exception ->
-            Log.e("FetchPlaceDetails", "Failed to fetch place details: $exception")
-        }
     }
 
     override fun onMapReady(map: GoogleMap) {
@@ -125,7 +62,41 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
 
         // Get the current location of the device and set the position of the map.
         getDeviceLocation()
-        searchPlaces("clothing")
+
+        // search for thrift places around the user when the map comes to an idle
+        map.setOnCameraIdleListener {
+            searchPlaces("thrift")
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun searchPlaces(query: String) {
+        Log.e(TAG,"this thing on?")
+        val fields = mutableListOf(Place.Field.NAME, Place.Field.ADDRESS,
+            Place.Field.LAT_LNG)
+        // get the bounds of the visible region
+        val southwest = map!!.projection.visibleRegion.latLngBounds.southwest
+        val northeast = map!!.projection.visibleRegion.latLngBounds.northeast
+        // send a text request to fetch the clothing stores in this region
+        val request = SearchByTextRequest.builder(query, fields)
+            .setIncludedType("clothing_store")
+            .setLocationRestriction(RectangularBounds.newInstance(
+                southwest, northeast))
+            .build()
+        // upon completion of search, parse address and name
+        placesClient?.searchByText(request)?.addOnCompleteListener { task ->
+            if (task.isSuccessful) {
+                Log.e(TAG,"got a successful response")
+                var result = task.result
+                for (place in result.places) {
+                    Log.e(TAG, "Address: " + place.address + " Name: " + place.name)
+                    map!!.addMarker(MarkerOptions().position(place.latLng))
+                }
+            } else {
+                val exception = task.exception
+                Log.e("NearbyClothingStores", "Failed to fetch nearby clothing stores: $exception")
+            }
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -152,6 +123,7 @@ class MainActivity : AppCompatActivity(), OnMapReadyCallback {
                         map?.moveCamera(CameraUpdateFactory
                             .newLatLngZoom(defaultLocation, DEFAULT_ZOOM.toFloat()))
                         map?.uiSettings?.isMyLocationButtonEnabled = false
+
                     }
                 }
             }
