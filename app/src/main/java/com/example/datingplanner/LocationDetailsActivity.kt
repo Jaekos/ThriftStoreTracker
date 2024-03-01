@@ -20,5 +20,7 @@ class LocationDetailsActivity : AppCompatActivity() {
         textViewName.text = name
         val textViewAddress: TextView = findViewById(R.id.textViewAddress)
         textViewAddress.text = address
+
+
     }
 }
